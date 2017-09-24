@@ -43,7 +43,7 @@ if __name__ == '__main__':
     resolution = args.resolution
 
     # Instantiate video capture object.
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
 
     # Set resolution
     if resolution is not None:
@@ -66,12 +66,8 @@ if __name__ == '__main__':
 	# Saver used to restore the model to the session.
 	saver = tf.train.Saver()
 
-	# Instantiate a Writer to save the video.
-	fourcc = cv2.VideoWriter_fourcc(*'XVID')
-	out = cv2.VideoWriter('output.avi', fourcc, 15.0, (x_new, y_new))
-
 	cv2.namedWindow("result", cv2.WND_PROP_FULLSCREEN)
-	cv2.setWindowProperty("result", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+	cv2.setWindowProperty("result", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
 	models = ["./models/scream.ckpt", "./models/udnie.ckpt", "./models/wave.ckpt", "./models/la_muse.ckpt", "./models/rain_princess.ckpt", "./models/wreck.ckpt"]
 	next = 0
 	sess = tf.Session(config=soft_config)
@@ -93,14 +89,6 @@ if __name__ == '__main__':
 	    img_out = np.squeeze(img_out).astype(np.uint8)
 	    img_out = cv2.cvtColor(img_out, cv2.COLOR_BGR2RGB)
 
-	    # Write frame to file.
-	    out.write(img_out)
-
-	    # Put the FPS on it.
-	    # img_out = cv2.putText(img_out, 'fps: {}'.format(fps), (50, 50),
-	                          # cv2.FONT_HERSHEY_SIMPLEX,
-	                          # 1.0, (255, 0, 0), 3)
-
 	    # Display the resulting frame
 	    cv2.imshow('result', img_out)
 	    key = cv2.waitKey(1)
@@ -121,6 +109,5 @@ if __name__ == '__main__':
 
 	# When everything done, release the capture
 	cap.release()
-	out.release()
 	sess.close()
 	cv2.destroyAllWindows()
