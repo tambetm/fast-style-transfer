@@ -26,8 +26,10 @@ def setup_parser():
                         nargs=2,
                         type=int,
                         default=None)
+    parser.add_argument('--capture_device', default=1)
     parser.add_argument('--fullscreen', action="store_true", default=False)
     parser.add_argument('--vertical', action="store_true", default=False)
+    parser.add_argument('--canvas_size', nargs=2, type=int, default=None)
     return parser
 
 def read_orig_image(filename):
@@ -51,7 +53,7 @@ if __name__ == '__main__':
     resolution = args.resolution
 
     # Instantiate video capture object.
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(args.capture_device)
 
     # Set resolution
     if resolution is not None:
@@ -114,9 +116,9 @@ if __name__ == '__main__':
 		img_out = np.swapaxes(img_out, 0, 1)
 	    with_style = np.concatenate((img_out, orig_im), axis=0)
 
-	    if args.vertical:
-	        padx = (540 - with_style.shape[1]) // 2
-	        pady = (960 - with_style.shape[0]) // 2
+            if args.canvas_size:
+	        padx = (args.canvas_size[0] - with_style.shape[1]) // 2
+	        pady = (args.canvas_size[1] - with_style.shape[0]) // 2
 	        with_style = np.pad(with_style, ((pady, pady), (padx, padx), (0, 0)), "constant")
 
 	    # Display the resulting frame
