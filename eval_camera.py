@@ -26,7 +26,7 @@ def setup_parser():
                         nargs=2,
                         type=int,
                         default=None)
-    parser.add_argument('--capture_device', default=1)
+    parser.add_argument('--capture_device', default=0)
     parser.add_argument('--fullscreen', action="store_true", default=False)
     parser.add_argument('--vertical', action="store_true", default=False)
     parser.add_argument('--canvas_size', nargs=2, type=int, default=None)
@@ -70,8 +70,8 @@ if __name__ == '__main__':
     soft_config.gpu_options.allow_growth = True
     shape = [1, y_new, x_new, 3]
 
-    #styles = ["scream", "udnie", "wave", "la_muse", "rain_princess", "wreck"]
-    styles = ["udnie", "wave", "rain_princess", "la_muse"]
+    styles = ["scream", "udnie", "wave", "la_muse", "rain_princess", "wreck"]
+    #styles = ["udnie", "wave", "rain_princess", "la_muse"]
 
     if args.vertical:
         t = x_new
@@ -108,6 +108,7 @@ if __name__ == '__main__':
 
 	    # Our operations on the frame come here
 	    img_out = sess.run(Y, feed_dict={X: img_4d})
+	    img_out = np.clip(img_out, 0, 255)
 	    img_out = np.squeeze(img_out).astype(np.uint8)
 	    img_out = cv2.cvtColor(img_out, cv2.COLOR_BGR2RGB)
 
