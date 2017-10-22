@@ -1,9 +1,11 @@
 import sys
 sys.path.insert(0, 'src')
-import transform, numpy as np
-import cv2
+import transform
+import numpy as np
 import tensorflow as tf
+import cv2
 import argparse
+import time
 
 def setup_parser():
     """Options for command-line input."""
@@ -26,21 +28,24 @@ def setup_parser():
                         nargs=2,
                         type=int,
                         default=None)
-    parser.add_argument('--capture_device', default=0)
+    parser.add_argument('--capture_device', type=int, default=0)
     parser.add_argument('--fullscreen', action="store_true", default=False)
     parser.add_argument('--vertical', action="store_true", default=False)
     parser.add_argument('--canvas_size', nargs=2, type=int, default=None)
+    parser.add_argument('--offset', help='How many frames to skip before switching to next style', default=30)
     return parser
 
 def read_orig_image(filename):
 	orig_im = cv2.imread(filename)
-	factory = 300. / orig_im.shape[0]
-	factorx = float(x_new) / orig_im.shape[1]
+	factory = 240. / orig_im.shape[0]
+	factorx = 240. / orig_im.shape[1]
 	factor = min(factorx, factory)
 	orig_im = cv2.resize(orig_im, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_AREA)
-        padx = (x_new - orig_im.shape[1]) // 2
-        pady = 10
-        orig_im = np.pad(orig_im, ((pady, pady), (padx, x_new - orig_im.shape[1] - padx), (0,0)), 'constant')
+        orig_im = np.pad(orig_im, ((y_new - 400 - orig_im.shape[0] + 30, 0), (0, x_new - orig_im.shape[1]), (0,0)), 'constant')
+	text_size_ln1 = cv2.getTextSize(titles[next],cv2.FONT_HERSHEY_SIMPLEX,1,0)[0];
+	text_size_ln2 = cv2.getTextSize("by "+authors[next],cv2.FONT_HERSHEY_SIMPLEX,1,0)[0];
+	cv2.putText(orig_im, titles[next], (orig_im.shape[1]-text_size_ln1[0], orig_im.shape[0]-(10+2*text_size_ln1[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1)
+	cv2.putText(orig_im, "by "+authors[next], (orig_im.shape[1]-text_size_ln2[0], orig_im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1)
 	return orig_im
 
 if __name__ == '__main__':
@@ -51,6 +56,7 @@ if __name__ == '__main__':
     model_path = args.model_path
     upsample_method = args.upsample_method
     resolution = args.resolution
+    offset = args.offset
 
     # Instantiate video capture object.
     cap = cv2.VideoCapture(args.capture_device)
@@ -70,8 +76,9 @@ if __name__ == '__main__':
     soft_config.gpu_options.allow_growth = True
     shape = [1, y_new, x_new, 3]
 
+    authors = ["E.Munch", "F.Picabia", "K.Hokusai", "P.Picasso", "L.Afremov", "W.Turner"]
+    titles = ["Scream", "Udnie", "The Wave", "La Muse", "Rain Princess", "The Shipwreck"]
     styles = ["scream", "udnie", "wave", "la_muse", "rain_princess", "wreck"]
-    #styles = ["udnie", "wave", "rain_princess", "la_muse"]
 
     if args.vertical:
         t = x_new
@@ -88,7 +95,7 @@ if __name__ == '__main__':
 	if args.fullscreen:
 	    cv2.namedWindow("result", cv2.WND_PROP_FULLSCREEN)
 	    cv2.setWindowProperty("result", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
-	models = ["./models/scream.ckpt", "./models/udnie.ckpt", "./models/wave.ckpt", "./models/la_muse.ckpt", "./models/rain_princess.ckpt", "./models/wreck.ckpt"]
+
 	next = 0
 	sess = tf.Session(config=soft_config)
 
@@ -98,11 +105,12 @@ if __name__ == '__main__':
 
 	saver.restore(sess, "./models/"+styles[next]+".ckpt")
 	print('Begin filtering...')
+	count = 0
 
 	while(True):
 	    # Capture frame-by-frame
 	    ret, frame = cap.read()
-
+	    
 	    # Make frame 4-D
 	    img_4d = frame[np.newaxis, :]
 
@@ -110,29 +118,43 @@ if __name__ == '__main__':
 	    img_out = sess.run(Y, feed_dict={X: img_4d})
 	    img_out = np.clip(img_out, 0, 255)
 	    img_out = np.squeeze(img_out).astype(np.uint8)
-	    img_out = cv2.cvtColor(img_out, cv2.COLOR_BGR2RGB)
+	    img_out = cv2.cvtColor(img_out, cv2.COLOR_BGR2RGB)	 
 
             if args.vertical:
                 frame = np.swapaxes(frame, 0, 1)
 		img_out = np.swapaxes(img_out, 0, 1)
+	   
 	    with_style = np.concatenate((img_out, orig_im), axis=0)
 
             if args.canvas_size:
 	        padx = (args.canvas_size[0] - with_style.shape[1]) // 2
 	        pady = (args.canvas_size[1] - with_style.shape[0]) // 2
 	        with_style = np.pad(with_style, ((pady, pady), (padx, padx), (0, 0)), "constant")
-
+	   
+	    # In progrss, img_out is resized to fill maximum space on TV
+	    full_image = np.zeros((1080, 1920, 3))
+	    img_out = cv2.resize(img_out, (1080, 1440))
+	   
 	    # Display the resulting frame
 	    cv2.imshow('result', with_style)
 	    key = cv2.waitKey(1)
-	    if key == ord('a'):
+	    if count == offset:
 		if next == len(styles)-1:
 		    next = 0
 		else:
 		    next += 1
 		orig_im = read_orig_image("./styles/"+styles[next]+".jpg")
 		saver.restore(sess, "./models/"+styles[next]+".ckpt")
+		count = 0
+	    count += 1
 	    if key == ord('d'):
+		if next == len(styles)-1:
+		    next = 0
+		else:
+		    next += 1
+		orig_im = read_orig_image("./styles/"+styles[next]+".jpg")
+		saver.restore(sess, "./models/"+styles[next]+".ckpt")
+	    if key == ord('a'):
 		if next == 0:
 		    next = len(styles)-1
 		else:
