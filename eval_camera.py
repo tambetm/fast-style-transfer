@@ -32,7 +32,7 @@ def setup_parser():
     parser.add_argument('--fullscreen', action="store_true", default=False)
     parser.add_argument('--vertical', action="store_true", default=False)
     parser.add_argument('--canvas_size', nargs=2, type=int, default=None)
-    parser.add_argument('--offset', help='How many frames to skip before switching to next style', default=30)
+    parser.add_argument('--timeout', help='How many seconds to wait before switching to next style', default=30)
     return parser
 
 def read_orig_image(filename):
@@ -56,7 +56,6 @@ if __name__ == '__main__':
     model_path = args.model_path
     upsample_method = args.upsample_method
     resolution = args.resolution
-    offset = args.offset
 
     # Instantiate video capture object.
     cap = cv2.VideoCapture(args.capture_device)
@@ -74,6 +73,7 @@ if __name__ == '__main__':
     g = tf.Graph()
     soft_config = tf.ConfigProto(allow_soft_placement=True)
     soft_config.gpu_options.allow_growth = True
+    #soft_config.gpu_options.per_process_gpu_memory_fraction=0.33
     shape = [1, y_new, x_new, 3]
 
     authors = ["E.Munch", "F.Picabia", "K.Hokusai", "P.Picasso", "L.Afremov", "W.Turner"]
@@ -105,7 +105,7 @@ if __name__ == '__main__':
 
 	saver.restore(sess, "./models/"+styles[next]+".ckpt")
 	print('Begin filtering...')
-	count = 0
+	start_time = time.time()
 
 	while(True):
 	    # Capture frame-by-frame
@@ -138,22 +138,14 @@ if __name__ == '__main__':
 	    # Display the resulting frame
 	    cv2.imshow('result', with_style)
 	    key = cv2.waitKey(1)
-	    if count == offset:
+	    if key == ord('d') or time.time() - start_time > args.timeout:
 		if next == len(styles)-1:
 		    next = 0
 		else:
 		    next += 1
 		orig_im = read_orig_image("./styles/"+styles[next]+".jpg")
 		saver.restore(sess, "./models/"+styles[next]+".ckpt")
-		count = 0
-	    count += 1
-	    if key == ord('d'):
-		if next == len(styles)-1:
-		    next = 0
-		else:
-		    next += 1
-		orig_im = read_orig_image("./styles/"+styles[next]+".jpg")
-		saver.restore(sess, "./models/"+styles[next]+".ckpt")
+                start_time = time.time()
 	    if key == ord('a'):
 		if next == 0:
 		    next = len(styles)-1
@@ -161,6 +153,7 @@ if __name__ == '__main__':
 		    next -= 1
 		orig_im = read_orig_image("./styles/"+styles[next]+".jpg")
 		saver.restore(sess, "./models/"+styles[next]+".ckpt")
+                start_time = time.time()
 	    if key & 0xFF == ord('q'):
 	        break
 
