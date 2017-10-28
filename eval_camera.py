@@ -36,17 +36,17 @@ def setup_parser():
     return parser
 
 def read_orig_image(filename):
-	orig_im = cv2.imread(filename)
-	factory = 240. / orig_im.shape[0]
-	factorx = 240. / orig_im.shape[1]
-	factor = min(factorx, factory)
-	orig_im = cv2.resize(orig_im, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_AREA)
+        orig_im = cv2.imread(filename)
+        factory = 240. / orig_im.shape[0]
+        factorx = 240. / orig_im.shape[1]
+        factor = min(factorx, factory)
+        orig_im = cv2.resize(orig_im, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_AREA)
         orig_im = np.pad(orig_im, ((y_new - 400 - orig_im.shape[0] + 30, 0), (0, x_new - orig_im.shape[1]), (0,0)), 'constant')
-	text_size_ln1 = cv2.getTextSize(titles[next],cv2.FONT_HERSHEY_SIMPLEX,1,0)[0];
-	text_size_ln2 = cv2.getTextSize("by "+authors[next],cv2.FONT_HERSHEY_SIMPLEX,1,0)[0];
-	cv2.putText(orig_im, titles[next], (orig_im.shape[1]-text_size_ln1[0], orig_im.shape[0]-(10+2*text_size_ln1[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1)
-	cv2.putText(orig_im, "by "+authors[next], (orig_im.shape[1]-text_size_ln2[0], orig_im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1)
-	return orig_im
+        text_size_ln1 = cv2.getTextSize(titles[next],cv2.FONT_HERSHEY_SIMPLEX,1,0)[0];
+        text_size_ln2 = cv2.getTextSize("by "+authors[next],cv2.FONT_HERSHEY_SIMPLEX,1,0)[0];
+        cv2.putText(orig_im, titles[next], (orig_im.shape[1]-text_size_ln1[0], orig_im.shape[0]-(10+2*text_size_ln1[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1, lineType=cv2.LINE_AA)
+        cv2.putText(orig_im, "by "+authors[next], (orig_im.shape[1]-text_size_ln2[0], orig_im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1, lineType=cv2.LINE_AA)
+        return orig_im
 
 if __name__ == '__main__':
 
@@ -83,81 +83,87 @@ if __name__ == '__main__':
     if args.vertical:
         t = x_new
         x_new = y_new
-	y_new = t
+        y_new = t
 
     with g.as_default():
-	X = tf.placeholder(tf.float32, shape=shape, name='img_placeholder')
-	Y = transform.net(X)
+        X = tf.placeholder(tf.float32, shape=shape, name='img_placeholder')
+        Y = transform.net(X)
 
-	# Saver used to restore the model to the session.
-	saver = tf.train.Saver()
+        # Saver used to restore the model to the session.
+        saver = tf.train.Saver()
 
-	if args.fullscreen:
-	    cv2.namedWindow("result", cv2.WND_PROP_FULLSCREEN)
-	    cv2.setWindowProperty("result", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
+        if args.fullscreen:
+            cv2.namedWindow("result", cv2.WND_PROP_FULLSCREEN)
+            cv2.setWindowProperty("result", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
-	next = 0
-	sess = tf.Session(config=soft_config)
+        next = 0
+        sess = tf.Session(config=soft_config)
 
-	# Begin filtering.
-	print('Loading up model...')
-	orig_im = read_orig_image("./styles/"+styles[next]+".jpg")
+        # Begin filtering.
+        print('Loading up model...')
+        orig_im = read_orig_image("./styles/"+styles[next]+".jpg")
+        saver.restore(sess, "./models/"+styles[next]+".ckpt")
+        start_time = time.time()
+        print('Begin filtering...')
 
-	saver.restore(sess, "./models/"+styles[next]+".ckpt")
-	print('Begin filtering...')
-	start_time = time.time()
+        while(True):
+            # Capture frame-by-frame
+            ret, frame = cap.read()
+            
+            # Make frame 4-D
+            img_4d = frame[np.newaxis, :]
 
-	while(True):
-	    # Capture frame-by-frame
-	    ret, frame = cap.read()
-	    
-	    # Make frame 4-D
-	    img_4d = frame[np.newaxis, :]
-
-	    # Our operations on the frame come here
-	    img_out = sess.run(Y, feed_dict={X: img_4d})
-	    img_out = np.clip(img_out, 0, 255)
-	    img_out = np.squeeze(img_out).astype(np.uint8)
-	    img_out = cv2.cvtColor(img_out, cv2.COLOR_BGR2RGB)	 
+            # Our operations on the frame come here
+            img_out = sess.run(Y, feed_dict={X: img_4d})
+            img_out = np.clip(img_out, 0, 255)
+            img_out = np.squeeze(img_out).astype(np.uint8)
+            img_out = cv2.cvtColor(img_out, cv2.COLOR_BGR2RGB)   
 
             if args.vertical:
                 frame = np.swapaxes(frame, 0, 1)
-		img_out = np.swapaxes(img_out, 0, 1)
-	   
-	    with_style = np.concatenate((img_out, orig_im), axis=0)
+                img_out = np.swapaxes(img_out, 0, 1)
+                
+            # Timer animation
+            radius = 13
+            center = (orig_im.shape[1]-(radius+3), 30+radius) # 30 is default margin from edges
+            color = (255, 255, 255)
+            cv2.circle(orig_im, center, radius, color, thickness=1, lineType=cv2.LINE_AA)
+            cv2.ellipse(orig_im, center, (radius, radius), -90, 0, 360/args.timeout*int(time.time() - start_time), color, -1)
+            
+            with_style = np.concatenate((img_out, orig_im), axis=0)
 
             if args.canvas_size:
-	        padx = (args.canvas_size[0] - with_style.shape[1]) // 2
-	        pady = (args.canvas_size[1] - with_style.shape[0]) // 2
-	        with_style = np.pad(with_style, ((pady, pady), (padx, padx), (0, 0)), "constant")
-	   
-	    # In progrss, img_out is resized to fill maximum space on TV
-	    full_image = np.zeros((1080, 1920, 3))
-	    img_out = cv2.resize(img_out, (1080, 1440))
-	   
-	    # Display the resulting frame
-	    cv2.imshow('result', with_style)
-	    key = cv2.waitKey(1)
-	    if key == ord('d') or time.time() - start_time > args.timeout:
-		if next == len(styles)-1:
-		    next = 0
-		else:
-		    next += 1
-		orig_im = read_orig_image("./styles/"+styles[next]+".jpg")
-		saver.restore(sess, "./models/"+styles[next]+".ckpt")
+                padx = (args.canvas_size[0] - with_style.shape[1]) // 2
+                pady = (args.canvas_size[1] - with_style.shape[0]) // 2
+                with_style = np.pad(with_style, ((pady, pady), (padx, padx), (0, 0)), "constant")
+           
+            # In progrss, img_out is resized to fill maximum space on TV
+            full_image = np.zeros((1080, 1920, 3))
+            img_out = cv2.resize(img_out, (1080, 1440))
+           
+            # Display the resulting frame
+            cv2.imshow('result', with_style)
+            key = cv2.waitKey(1)
+            if key == ord('d') or time.time() - start_time > args.timeout:
+                if next == len(styles)-1:
+                    next = 0
+                else:
+                    next += 1
+                orig_im = read_orig_image("./styles/"+styles[next]+".jpg")
+                saver.restore(sess, "./models/"+styles[next]+".ckpt")
                 start_time = time.time()
-	    if key == ord('a'):
-		if next == 0:
-		    next = len(styles)-1
-		else:
-		    next -= 1
-		orig_im = read_orig_image("./styles/"+styles[next]+".jpg")
-		saver.restore(sess, "./models/"+styles[next]+".ckpt")
+            if key == ord('a'):
+                if next == 0:
+                    next = len(styles)-1
+                else:
+                    next -= 1
+                orig_im = read_orig_image("./styles/"+styles[next]+".jpg")
+                saver.restore(sess, "./models/"+styles[next]+".ckpt")
                 start_time = time.time()
-	    if key & 0xFF == ord('q'):
-	        break
+            if key & 0xFF == ord('q'):
+                break
 
-	# When everything done, release the capture
-	cap.release()
-	sess.close()
-	cv2.destroyAllWindows()
+        # When everything done, release the capture
+        cap.release()
+        sess.close()
+        cv2.destroyAllWindows()
