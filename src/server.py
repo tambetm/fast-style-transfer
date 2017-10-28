@@ -8,7 +8,7 @@ import scipy.misc
 from flask import Flask, request, flash, redirect, jsonify, send_from_directory
 
 parser = argparse.ArgumentParser(description='Image server')
-parser.add_argument('-h', "--host", help="Host ip", required=False)
+parser.add_argument('-ip', "--host", help="Host ip", required=False)
 parser.add_argument('-p', "--port", help="Port number", required=False)
 args = parser.parse_args()
 
