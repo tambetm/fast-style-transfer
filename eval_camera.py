@@ -7,6 +7,7 @@ import cv2
 import argparse
 import time
 import dlib
+from src.client import send_image
 
 def setup_parser():
     """Options for command-line input."""
@@ -72,11 +73,13 @@ def stylize_and_output(cap, sess, saver, next):
         freeze_start_time = 0
         freeze = False
         last_out = None
+        qr_img = None
         while(True):
             # Capture frame-by-frame
             ret, frame = cap.read()
 
             if freeze == True:
+                qr_img.show()
                 if freeze_start_time == 0:
                     freeze_start_time = time.time()
                 clear_timer(orig_im, default_radius)
@@ -128,6 +131,7 @@ def stylize_and_output(cap, sess, saver, next):
                         if time.time() - start_time > default_freeze_time+1:
                             freeze = True
                             last_out = img_out
+                            qr_img = send_image(last_out)
                 else:
                         start_time = 0
                         clear_timer(orig_im, default_radius)
