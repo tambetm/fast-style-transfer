@@ -12,7 +12,7 @@ def get_webcam_image():
 
 def send_image(img):
     files = {'file': ('img', img)}
-    r = requests.post("http://localhost:5000/uploadImage", files=files)
+    r = requests.post("http://miranda.rm.mt.ut.ee:5000/uploadImage", files=files)
     answer = json.loads(r.text)
     qr_img = qrcode.make(answer["url"])
     qr_img.show()

@@ -39,7 +39,7 @@ def upload_image():
 @app.route("/downloadImage", methods=["GET"])
 def download_image():
     filename = request.args.get("filename")
-    return send_from_directory(directory=app.config["UPLOAD_FOLDER"], filename=filename)
+    return send_from_directory(directory=app.config["UPLOAD_FOLDER"], filename=filename, as_attachment=True)
 
 
 if args.host and args.port:
