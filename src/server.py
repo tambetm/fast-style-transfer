@@ -1,3 +1,4 @@
+import argparse
 import os
 import uuid
 
@@ -5,6 +6,11 @@ import cv2
 import numpy as np
 import scipy.misc
 from flask import Flask, request, flash, redirect, jsonify, send_from_directory
+
+parser = argparse.ArgumentParser(description='Image server')
+parser.add_argument('-h', "--host", help="Host ip", required=False)
+parser.add_argument('-p', "--port", help="Port number", required=False)
+args = parser.parse_args()
 
 app = Flask(__name__)
 
@@ -33,4 +39,7 @@ def download_image():
     return send_from_directory(directory=app.config["UPLOAD_FOLDER"], filename=filename)
 
 
-app.run()
+if args.host and args.port:
+    app.run(args.host, args.port)
+else:
+    app.run()
