@@ -18,6 +18,9 @@ UPLOAD_FOLDER = os.getcwd() + "/output"
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.secret_key = 'super secret key'
 
+if not os.path.exists(app.config["UPLOAD_FOLDER"]):
+    os.makedirs(app.config["UPLOAD_FOLDER"])
+
 
 @app.route("/uploadImage", methods=['POST'])
 def upload_image():
