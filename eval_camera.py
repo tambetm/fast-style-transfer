@@ -79,7 +79,6 @@ def stylize_and_output(cap, sess, saver, next):
             ret, frame = cap.read()
 
             if freeze == True:
-                qr_img.show()
                 if freeze_start_time == 0:
                     freeze_start_time = time.time()
                 clear_timer(orig_im, default_radius)
@@ -131,7 +130,7 @@ def stylize_and_output(cap, sess, saver, next):
                         if time.time() - start_time > default_freeze_time+1:
                             freeze = True
                             last_out = img_out
-                            qr_img = send_image(last_out)
+                            qr_img = send_image(last_out, "http://miranda.rm.mt.ut.ee:5000/uploadImage")
                 else:
                         start_time = 0
                         clear_timer(orig_im, default_radius)
