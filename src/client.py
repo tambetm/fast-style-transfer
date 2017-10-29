@@ -15,7 +15,15 @@ def send_image(img, dest):
     files = {'file': ('img', img_str)}
     r = requests.post(dest, files=files)
     answer = json.loads(r.text)
-    qr_img = qrcode.make(answer["url"])
+    
+    qr = qrcode.QRCode(
+        box_size=3,
+        border=1,
+    )
+    
+    qr.add_data(answer["url"])
+    qr.make(fit=True)
+    qr_img = qr.make_image()
     return qr_img
 
 # image = get_webcam_image()

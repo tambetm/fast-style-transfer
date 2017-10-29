@@ -7,6 +7,7 @@ import cv2
 import argparse
 import time
 import dlib
+import math
 from src.client import send_image
 
 def setup_parser():
@@ -33,8 +34,10 @@ def setup_parser():
     parser.add_argument('--capture_device', type=int, default=0)
     parser.add_argument('--fullscreen', action="store_true", default=False)
     parser.add_argument('--vertical', action="store_true", default=False)
-    parser.add_argument('--canvas_size', nargs=2, type=int, default=None)
-    parser.add_argument('--timeout', help='How many seconds to wait before switching to next style', default=30)
+    parser.add_argument('--timeout', help='How many seconds to wait before switching to next style', default=5)
+    parser.add_argument('--timeout_qr', help='How many seconds to show output image with qr', default=10)
+    parser.add_argument('--server_url', help='Server url for uploading images', default="http://miranda.rm.mt.ut.ee:5000/uploadImage")
+    parser.add_argument('--stylize_preview', action="store_true", default=False)
     return parser
 
 def read_orig_image(index):
@@ -51,18 +54,42 @@ def read_orig_image(index):
         return orig_im
        
 # displays clock-similar animation next to original style image 
-def show_timer(start_time, timeout, orig_im, radius, color):
-        center = (orig_im.shape[1]-(radius+3), 30+radius)
+def show_timer(start_time, timeout, orig_im, radius, color, reverse):
+    center = (orig_im.shape[1]-(radius+3), 30+radius)
+    if reverse:
+        cv2.circle(orig_im, center, radius, (0,0,0), thickness=-1, lineType=cv2.LINE_AA)
         cv2.circle(orig_im, center, radius, color, thickness=1, lineType=cv2.LINE_AA)
-        cv2.ellipse(orig_im, center, (radius, radius), -90, 0, 360/timeout*int(time.time() - start_time), color, -1)
+        cv2.ellipse(orig_im, center, (radius, radius), -90, 0, 360 - 360/timeout*math.floor(time.time() - start_time), color, -1)
+    else:
+        cv2.circle(orig_im, center, radius, color, thickness=1, lineType=cv2.LINE_AA)
+        cv2.ellipse(orig_im, center, (radius, radius), -90, 0, 360/timeout*math.floor(time.time() - start_time), color, -1)
+        
         
 def clear_timer(orig_im, radius):
-        center = (orig_im.shape[1]-(radius+3), 30+radius)
-        radius += 3
-        cv2.circle(orig_im, center, radius, (0,0,0), thickness=-1, lineType=cv2.LINE_AA)
-        
+    center = (orig_im.shape[1]-(radius+3), 30+radius)
+    radius += 3
+    cv2.circle(orig_im, center, radius, (0,0,0), thickness=-1, lineType=cv2.LINE_AA)
+
+def pad_im(img):
+    padx = (540 - img.shape[1]) // 2
+    pady = (960 - img.shape[0]) // 2
+    return np.pad(img, ((pady, pady), (padx, padx), (0, 0)), "constant")
+
+def add_qr(qr_img, dest_img):
+    qr_ndarray = np.array(qr_img, dtype=np.float32) * 255
+    qr = cv2.cvtColor(qr_ndarray, cv2.COLOR_GRAY2BGR)
+    dest_img[30:30+qr.shape[0], 351:(351+qr.shape[1]), :] = qr
+
+def stylize_frame(frame):
+    img_4d = frame[np.newaxis, :]
+                
+    # Our operations on the frame come here
+    img_out = sess.run(Y, feed_dict={X: img_4d})
+    img_out = np.clip(img_out, 0, 255)
+    img_out = np.squeeze(img_out).astype(np.uint8)
+    return cv2.cvtColor(img_out, cv2.COLOR_BGR2RGB)
+
 def stylize_and_output(cap, sess, saver, next):
-        default_freeze_time = 10
         default_radius = 13
         print('Loading up model...')
         saver.restore(sess, "./models/"+styles[next]+".ckpt")
@@ -70,90 +97,100 @@ def stylize_and_output(cap, sess, saver, next):
         # init original style image
         orig_im = read_orig_image(next)
         start_time = 0
-        freeze_start_time = 0
-        freeze = False
-        last_out = None
         qr_img = None
+        timer_color = (100,100,100)
         while(True):
             # Capture frame-by-frame
             ret, frame = cap.read()
+            
+            img_out = frame
+            orig_frame = frame
+            
+            if args.stylize_preview:
+                img_out = stylize_frame(frame)
+                   
+            if args.vertical:
+                frame = np.swapaxes(frame, 0, 1)
+                img_out = np.swapaxes(img_out, 0, 1)
 
-            if freeze == True:
-                if freeze_start_time == 0:
-                    freeze_start_time = time.time()
-                clear_timer(orig_im, default_radius)
-                show_timer(freeze_start_time, default_freeze_time, orig_im, default_radius, (255, 0, 0))
-                cv2.imshow('result', np.concatenate((last_out, orig_im), axis=0))
-                if time.time() - freeze_start_time > default_freeze_time+1:
-                    next  += 1
-                    freeze_start_time = 0
-                    freeze = False
+            with_style = np.concatenate((img_out, orig_im), axis=0)        
+            with_style = pad_im(with_style)
+                    
+            # Display the resulting frame
+            cv2.imshow('result', with_style)
+
+            # If face detected, start countdown to take a picture
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            rects = detector(gray, 0)
+            
+            if len(rects) > 0:
+                if start_time == 0:
+                    start_time = time.time()
+                show_timer(start_time, args.timeout, orig_im, default_radius, timer_color, False)
+                # Timeout passes
+                if time.time() - args.timeout > start_time:
+                    img_old = np.swapaxes(orig_frame, 0, 1)                     
+                    img_old = np.concatenate((img_old, orig_im), axis=0)
+                    img_old = pad_im(img_old)
+                    cv2.imshow('result', img_old)
+                    cv2.waitKey(1)
+
+                    stylized_im = stylize_frame(orig_frame)
+                    img_out = np.swapaxes(stylized_im, 0, 1)                     
+                    with_style = np.concatenate((img_out, orig_im), axis=0)           
+                    with_style = pad_im(with_style)
+
+                    if args.stylize_preview:
+                        for f in np.arange(0., 1.05, 0.05):
+                            img = 255. * f + with_style * (1 - f)
+                            cv2.imshow('result', img.astype(np.uint8))
+                            cv2.waitKey(1)
+                        for f in np.arange(0., 1.05, 0.05):
+                            img = with_style * f + 255. * (1 - f)
+                            cv2.imshow('result', img.astype(np.uint8))
+                            cv2.waitKey(10)
+                    else:
+                        for f in np.arange(0, 1.05, 0.05):
+                            img = with_style * f + img_old * (1 - f)
+                            cv2.imshow('result', img.astype(np.uint8))
+                            cv2.waitKey(20)                            
+                    
+                    # Send output image to server
+                    clear_timer(orig_im, default_radius)
+                    output_im = np.concatenate((img_out, orig_im), axis=0)
+                    qr_img = send_image(pad_im(output_im), args.server_url)
+                    
+                    # Show image with QR and timer                     
+                    freeze_start = time.time()                        
+                    while(time.time() - args.timeout_qr < freeze_start): 
+                        clear_timer(orig_im, default_radius)
+                        #show_timer(freeze_start, args.timeout_qr, orig_im, default_radius, timer_color, True)
+                        
+                        add_qr(qr_img, orig_im)
+                        cv2.imshow('result', pad_im(np.concatenate((img_out, orig_im), axis=0)))
+                        cv2.waitKey(1000)
+                                                    
+                    next = (next + 1) % len(styles)
                     saver.restore(sess, "./models/"+styles[next]+".ckpt")
                     orig_im = read_orig_image(next)
                     start_time = 0
             else:
-                # Make frame 4-D
-                img_4d = frame[np.newaxis, :]
+                    start_time = 0
+                    clear_timer(orig_im, default_radius)
 
-                # Our operations on the frame come here
-                img_out = sess.run(Y, feed_dict={X: img_4d})
-                img_out = np.clip(img_out, 0, 255)
-                img_out = np.squeeze(img_out).astype(np.uint8)
-                img_out = cv2.cvtColor(img_out, cv2.COLOR_BGR2RGB)   
-
-                if args.vertical:
-                        frame = np.swapaxes(frame, 0, 1)
-                        img_out = np.swapaxes(img_out, 0, 1)
-
-                with_style = np.concatenate((img_out, orig_im), axis=0)
-
-                if args.canvas_size:
-                        padx = (args.canvas_size[0] - with_style.shape[1]) // 2
-                        pady = (args.canvas_size[1] - with_style.shape[0]) // 2
-                        with_style = np.pad(with_style, ((pady, pady), (padx, padx), (0, 0)), "constant")
-
-                # In progrss, img_out is resized to fill maximum space on TV
-                full_image = np.zeros((1080, 1920, 3))
-                img_out_resized = cv2.resize(img_out, (1080, 1440))
-
-                # Display the resulting frame
-                cv2.imshow('result', with_style)
-
-                # If face detected, start countdown to take a picture
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                rects = detector(gray, 0)
-
-                if len(rects) > 0:
-                        if start_time == 0:
-                            start_time = time.time()
-                        show_timer(start_time, default_freeze_time, orig_im, default_radius, (255, 255, 255))
-                        if time.time() - start_time > default_freeze_time+1:
-                            freeze = True
-                            last_out = img_out
-                            qr_img = send_image(last_out, "http://miranda.rm.mt.ut.ee:5000/uploadImage")
-                else:
-                        start_time = 0
-                        clear_timer(orig_im, default_radius)
-
-                key = cv2.waitKey(1)
-                if key == ord('d'):
-                        if next == len(styles)-1:
-                            next = 0
-                        else:
-                            next += 1
-                        orig_im = read_orig_image(next)
-                        saver.restore(sess, "./models/"+styles[next]+".ckpt")
-                        start_time = time.time()
-                if key == ord('a'):
-                        if next == 0:
-                            next = len(styles)-1
-                        else:
-                            next -= 1
-                        orig_im = read_orig_image(next)
-                        saver.restore(sess, "./models/"+styles[next]+".ckpt")
-                        start_time = time.time()
-                if key & 0xFF == ord('q'):
-                        break
+            key = cv2.waitKey(10)
+            if key == ord('d'):
+                    next = (next + 1) % len(styles)
+                    orig_im = read_orig_image(next)
+                    saver.restore(sess, "./models/"+styles[next]+".ckpt")
+                    start_time = time.time()
+            if key == ord('a'):
+                    next = (next - 1) % len(styles)-1
+                    orig_im = read_orig_image(next)
+                    saver.restore(sess, "./models/"+styles[next]+".ckpt")
+                    start_time = time.time()
+            if key & 0xFF == ord('q'):
+                    break
 
         # When everything done, release the capture
         cap.release()
