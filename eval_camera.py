@@ -36,7 +36,7 @@ def setup_parser():
     parser.add_argument('--vertical', action="store_true", default=False)
     parser.add_argument('--timeout', help='How many seconds to wait before switching to next style', default=5)
     parser.add_argument('--timeout_qr', help='How many seconds to show output image with qr', default=10)
-    parser.add_argument('--server_url', help='Server url for uploading images', default="http://miranda.rm.mt.ut.ee:5000/uploadImage")
+    parser.add_argument('--server_url', help='Server url for uploading images', default="http://miranda.rm.mt.ut.ee:8000/uploadImage")
     parser.add_argument('--stylize_preview', action="store_true", default=False)
     return parser
 
@@ -49,26 +49,26 @@ def read_orig_image(index):
         orig_im = np.pad(orig_im, ((y_new - 400 - orig_im.shape[0] + 30, 0), (0, x_new - orig_im.shape[1]), (0,0)), 'constant')
         text_size_ln1 = cv2.getTextSize(titles[index],cv2.FONT_HERSHEY_SIMPLEX,1,0)[0];
         text_size_ln2 = cv2.getTextSize("by "+authors[index],cv2.FONT_HERSHEY_SIMPLEX,1,0)[0];
-        cv2.putText(orig_im, titles[index], (orig_im.shape[1]-text_size_ln1[0], orig_im.shape[0]-(10+2*text_size_ln1[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1, lineType=cv2.LINE_AA)
-        cv2.putText(orig_im, "by "+authors[index], (orig_im.shape[1]-text_size_ln2[0], orig_im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1, lineType=cv2.LINE_AA)
+        cv2.putText(orig_im, titles[index], (orig_im.shape[1]-text_size_ln1[0], orig_im.shape[0]-(10+2*text_size_ln1[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1, lineType=cv2.cv.CV_AA)
+        cv2.putText(orig_im, "by "+authors[index], (orig_im.shape[1]-text_size_ln2[0], orig_im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1, lineType=cv2.cv.CV_AA)
         return orig_im
        
 # displays clock-similar animation next to original style image 
 def show_timer(start_time, timeout, orig_im, radius, color, reverse):
     center = (orig_im.shape[1]-(radius+3), 30+radius)
     if reverse:
-        cv2.circle(orig_im, center, radius, (0,0,0), thickness=-1, lineType=cv2.LINE_AA)
-        cv2.circle(orig_im, center, radius, color, thickness=1, lineType=cv2.LINE_AA)
+        cv2.circle(orig_im, center, radius, (0,0,0), thickness=-1, lineType=cv2.cv.CV_AA)
+        cv2.circle(orig_im, center, radius, color, thickness=1, lineType=cv2.cv.CV_AA)
         cv2.ellipse(orig_im, center, (radius, radius), -90, 0, 360 - 360/timeout*math.floor(time.time() - start_time), color, -1)
     else:
-        cv2.circle(orig_im, center, radius, color, thickness=1, lineType=cv2.LINE_AA)
+        cv2.circle(orig_im, center, radius, color, thickness=1, lineType=cv2.cv.CV_AA)
         cv2.ellipse(orig_im, center, (radius, radius), -90, 0, 360/timeout*math.floor(time.time() - start_time), color, -1)
         
         
 def clear_timer(orig_im, radius):
     center = (orig_im.shape[1]-(radius+3), 30+radius)
     radius += 3
-    cv2.circle(orig_im, center, radius, (0,0,0), thickness=-1, lineType=cv2.LINE_AA)
+    cv2.circle(orig_im, center, radius, (0,0,0), thickness=-1, lineType=cv2.cv.CV_AA)
 
 def pad_im(img):
     padx = (540 - img.shape[1]) // 2
@@ -122,6 +122,7 @@ def stylize_and_output(cap, sess, saver, next):
             # If face detected, start countdown to take a picture
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             rects = detector(gray, 0)
+            #rects = cv2gpu.find_faces(gray)
             
             if len(rects) > 0:
                 if start_time == 0:
@@ -234,6 +235,12 @@ if __name__ == '__main__':
     
     # Create face detector
     detector = dlib.get_frontal_face_detector()
+    #detector = dlib.cnn_face_detection_model_v1('mmod_human_face_detector.dat')
+    #import cv2gpu
+    #if cv2gpu.is_cuda_compatible():
+    #    cv2gpu.init_gpu_detector('haarcascade_frontalface_default_cuda.xml')
+    #else:
+    #    cv2gpu.init_cpu_detector('haarcascade_frontalface_default.xml')
 
     if args.vertical:
         t = x_new
@@ -250,7 +257,7 @@ if __name__ == '__main__':
 
         if args.fullscreen:
             cv2.namedWindow("result", cv2.WND_PROP_FULLSCREEN)
-            cv2.setWindowProperty("result", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            cv2.setWindowProperty("result", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
 
         next = 0
         sess = tf.Session(config=soft_config)
