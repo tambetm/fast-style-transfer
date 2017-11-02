@@ -1,21 +1,18 @@
 import argparse
 import os
 import uuid
-
-import cv2
-import numpy as np
-import scipy.misc
 from flask import Flask, request, flash, redirect, jsonify, send_from_directory
 
 parser = argparse.ArgumentParser(description='Image server')
-parser.add_argument('-d', "--host", help="Host ip", required=False)
-parser.add_argument('-p', "--port", help="Port number", type=int, required=False)
+parser.add_argument('-d', "--host", help="Host ip", default="0.0.0.0")
+parser.add_argument('-p', "--port", help="Port number", type=int, default=80)
+parser.add_argument('-o', "--output", help="Ouput folder", default="output")
+parser.add_argument("--debug", help="Debug mode", action="store_true", default=False)
 args = parser.parse_args()
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = os.getcwd() + "/output"
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), args.output)
 app.secret_key = 'super secret key'
 
 if not os.path.exists(app.config["UPLOAD_FOLDER"]):
@@ -28,11 +25,8 @@ def upload_image():
     if 'file' not in request.files:
         flash('No file part')
         return redirect(request.url)
-    file = request.files['file'].read()
-    image = cv2.imdecode(np.fromstring(file, np.uint8), cv2.IMREAD_COLOR)
-    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    scipy.misc.imsave(app.config["UPLOAD_FOLDER"] + os.sep + filename, image_rgb)
-
+    file = request.files['file']
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
     return jsonify(url=request.url_root + "downloadImage?filename=" + filename)
 
 
@@ -42,7 +36,4 @@ def download_image():
     return send_from_directory(directory=app.config["UPLOAD_FOLDER"], filename=filename, as_attachment=True)
 
 
-if args.host and args.port:
-    app.run(args.host, args.port)
-else:
-    app.run()
+app.run(args.host, args.port, debug=args.debug)

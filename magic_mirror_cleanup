@@ -1,0 +1,4 @@
+#!/bin/bash
+# Put me to /etc/cron.daily!
+
+find /home/ubuntu/fast-style-transfer/output/ -mindepth 1 -mtime +5 -delete
