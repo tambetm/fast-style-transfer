@@ -14,6 +14,7 @@ def send_image(img, dest):
     img_str = cv2.imencode('.jpg', img)[1].tostring()
     files = {'file': ('img', img_str)}
     r = requests.post(dest, files=files)
+    #print(r.text)
     answer = json.loads(r.text)
     #print(answer)
     
@@ -31,5 +32,4 @@ if __name__ == '__main__':
     #image = get_webcam_image()
     image = cv2.imread("../test_image.png")
     send_image(image, "http://magicmirror.cs.ut.ee/uploadImage")
-    
 
