@@ -15,6 +15,7 @@ def send_image(img, dest):
     files = {'file': ('img', img_str)}
     r = requests.post(dest, files=files)
     answer = json.loads(r.text)
+    #print(answer)
     
     qr = qrcode.QRCode(
         box_size=3,
@@ -26,5 +27,9 @@ def send_image(img, dest):
     qr_img = qr.make_image()
     return qr_img
 
-# image = get_webcam_image()
-# send_image(image, "http://miranda.rm.mt.ut.ee:5000/uploadImage")
+if __name__ == '__main__':
+    #image = get_webcam_image()
+    image = cv2.imread("../test_image.png")
+    send_image(image, "http://magicmirror.cs.ut.ee/uploadImage")
+    
+
