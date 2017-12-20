@@ -36,4 +36,5 @@ def download_image():
     return send_from_directory(directory=app.config["UPLOAD_FOLDER"], filename=filename, as_attachment=True)
 
 
-app.run(args.host, args.port, debug=args.debug)
+if __name__ == '__main__':
+    app.run(args.host, args.port, debug=args.debug)
