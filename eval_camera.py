@@ -33,8 +33,8 @@ def read_orig_image(index):
     factor = min(factorx, factory)
     orig_im = cv2.resize(orig_im, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_AREA)
     orig_im = np.pad(orig_im, ((y_new - 400 - orig_im.shape[0] + 30, 0), (0, x_new - orig_im.shape[1]), (0,0)), 'constant')
-    text_size_ln1 = cv2.getTextSize(titles[index],cv2.FONT_HERSHEY_SIMPLEX,1,0)[0];
-    text_size_ln2 = cv2.getTextSize("by "+authors[index],cv2.FONT_HERSHEY_SIMPLEX,1,0)[0];
+    text_size_ln1 = cv2.getTextSize(titles[index],cv2.FONT_HERSHEY_SIMPLEX,1,0)[0]
+    text_size_ln2 = cv2.getTextSize("by "+authors[index],cv2.FONT_HERSHEY_SIMPLEX,1,0)[0]
     cv2.putText(orig_im, titles[index], (orig_im.shape[1]-text_size_ln1[0], orig_im.shape[0]-(10+2*text_size_ln1[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1, lineType=cv2.cv.CV_AA)
     cv2.putText(orig_im, "by "+authors[index], (orig_im.shape[1]-text_size_ln2[0], orig_im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1, lineType=cv2.cv.CV_AA)
     return orig_im
@@ -58,8 +58,17 @@ def clear_timer(orig_im, radius):
 
 def pad_im(img):
     padx = (540 - img.shape[1]) // 2
-    pady = (960 - img.shape[0]) // 2
+    pady = (960 - img.shape[0]) // 2 #requires adjusting, so the logo can fit at the top
     return np.pad(img, ((pady, pady), (padx, padx), (0, 0)), "constant")
+
+def add_logo(img):
+    logo = cv2.imread("ut_logo.png")
+    # check if resizing factors are not too small
+    logo = cv2.resize(logo, (0, 0), fx=0.25, fy=0.25, interpolation=cv2.INTER_AREA)
+    y_offset = 10
+    x_offset = img.shape[1]//2 - logo.shape[1]//2
+    img[y_offset:y_offset + logo.shape[0], x_offset:x_offset + logo.shape[1]] = logo
+    return img
 
 def add_qr(qr_img, dest_img):
     qr_ndarray = np.array(qr_img, dtype=np.float32) * 255
@@ -96,13 +105,14 @@ def stylize_and_output(cap, sess, saver, next):
         
         if args.stylize_preview:
             img_out = stylize_frame(frame)
-               
+
         if args.vertical:
             frame = np.swapaxes(frame, 0, 1)
             img_out = np.swapaxes(img_out, 0, 1)
 
         with_style = np.concatenate((img_out, orig_im), axis=0)        
         with_style = pad_im(with_style)
+        add_logo(with_style)
                 
         # Display the resulting frame
         cv2.imshow('result', with_style)
@@ -133,6 +143,7 @@ def stylize_and_output(cap, sess, saver, next):
                 img_out = np.swapaxes(stylized_im, 0, 1)                     
                 with_style = np.concatenate((img_out, orig_im), axis=0)           
                 with_style = pad_im(with_style)
+                add_logo(with_style)
 
                 if args.stylize_preview:
                     for f in np.arange(0., 1.05, 0.05):
