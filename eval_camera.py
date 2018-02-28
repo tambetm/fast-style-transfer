@@ -216,9 +216,9 @@ if __name__ == '__main__':
     shape = [1, y_new, x_new, 3]
 
     # init authors, titles and styles
-    authors = ["E.Munch", "F.Picabia", "K.Hokusai", "P.Picasso", "L.Afremov", "W.Turner"]
-    titles = ["Scream", "Udnie", "The Wave", "La Muse", "Rain Princess", "The Shipwreck"]
-    styles = ["scream", "udnie", "wave", "la_muse", "rain_princess", "wreck"]
+    authors = ["P.Picasso", "A.Akberg", "L.Afremov", "E.Munch", "F.Picabia", "K.Hokusai", "W.Turner", "A. ja M.-K."]
+    titles = ["La Muse", "Toompea", "Rain Princess", "Scream", "Udnie", "The Wave", "The Shipwreck", "Wave"]
+    styles = ["la_muse", "akberg", "rain_princess", "scream", "udnie", "wave", "wreck", "new_style"]
     
     # Create face detector
     detector = dlib.get_frontal_face_detector()
