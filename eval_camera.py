@@ -250,7 +250,7 @@ if __name__ == '__main__':
 
         if args.fullscreen:
             cv2.namedWindow("result", cv2.WND_PROP_FULLSCREEN)
-            cv2.setWindowProperty("result", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
+            cv2.setWindowProperty("result", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
         next = 0
         sess = tf.Session(config=soft_config)
