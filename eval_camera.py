@@ -64,7 +64,7 @@ def pad_im(img):
 def add_logo(img):
     logo = cv2.imread("ut_logo.png")
     # check if resizing factors are not too small
-    logo = cv2.resize(logo, (0, 0), fx=0.25, fy=0.25, interpolation=cv2.INTER_AREA)
+    logo = cv2.resize(logo, (0, 0), fx=0.35, fy=0.35, interpolation=cv2.INTER_AREA)
     y_offset = 10
     x_offset = img.shape[1]//2 - logo.shape[1]//2
     img[y_offset:y_offset + logo.shape[0], x_offset:x_offset + logo.shape[1]] = logo
