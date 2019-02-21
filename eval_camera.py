@@ -35,26 +35,26 @@ def read_orig_image(index):
     orig_im = np.pad(orig_im, ((y_new - 400 - orig_im.shape[0] + 30, 0), (0, x_new - orig_im.shape[1]), (0,0)), 'constant')
     text_size_ln1 = cv2.getTextSize(titles[index],cv2.FONT_HERSHEY_SIMPLEX,1,0)[0]
     text_size_ln2 = cv2.getTextSize("by "+authors[index],cv2.FONT_HERSHEY_SIMPLEX,1,0)[0]
-    cv2.putText(orig_im, titles[index], (orig_im.shape[1]-text_size_ln1[0], orig_im.shape[0]-(10+2*text_size_ln1[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1, lineType=cv2.cv.CV_AA)
-    cv2.putText(orig_im, "by "+authors[index], (orig_im.shape[1]-text_size_ln2[0], orig_im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1, lineType=cv2.cv.CV_AA)
+    cv2.putText(orig_im, titles[index], (orig_im.shape[1]-text_size_ln1[0], orig_im.shape[0]-(10+2*text_size_ln1[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1, lineType=cv2.LINE_AA)
+    cv2.putText(orig_im, "by "+authors[index], (orig_im.shape[1]-text_size_ln2[0], orig_im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1, lineType=cv2.LINE_AA)
     return orig_im
        
 # displays clock-similar animation next to original style image 
 def show_timer(start_time, timeout, orig_im, radius, color, reverse):
     center = (orig_im.shape[1]-(radius+3), 30+radius)
     if reverse:
-        cv2.circle(orig_im, center, radius, (0,0,0), thickness=-1, lineType=cv2.cv.CV_AA)
-        cv2.circle(orig_im, center, radius, color, thickness=1, lineType=cv2.cv.CV_AA)
+        cv2.circle(orig_im, center, radius, (0,0,0), thickness=-1, lineType=cv2.LINE_AA)
+        cv2.circle(orig_im, center, radius, color, thickness=1, lineType=cv2.LINE_AA)
         cv2.ellipse(orig_im, center, (radius, radius), -90, 0, 360 - 360/timeout*math.floor(time.time() - start_time), color, -1)
     else:
-        cv2.circle(orig_im, center, radius, color, thickness=1, lineType=cv2.cv.CV_AA)
+        cv2.circle(orig_im, center, radius, color, thickness=1, lineType=cv2.LINE_AA)
         cv2.ellipse(orig_im, center, (radius, radius), -90, 0, 360/timeout*math.floor(time.time() - start_time), color, -1)
         
         
 def clear_timer(orig_im, radius):
     center = (orig_im.shape[1]-(radius+3), 30+radius)
     radius += 3
-    cv2.circle(orig_im, center, radius, (0,0,0), thickness=-1, lineType=cv2.cv.CV_AA)
+    cv2.circle(orig_im, center, radius, (0,0,0), thickness=-1, lineType=cv2.LINE_AA)
 
 def pad_im(img):
     padx = (540 - img.shape[1]) // 2
