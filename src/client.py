@@ -1,7 +1,7 @@
 import cv2
 import qrcode
 import requests
-from flask import json
+import json
 
 
 def get_webcam_image():

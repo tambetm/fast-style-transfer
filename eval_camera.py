@@ -221,7 +221,7 @@ if __name__ == '__main__':
 
     # Create the graph.
     g = tf.Graph()
-    soft_config = tf.ConfigProto(allow_soft_placement=True)
+    soft_config = tf.compat.v1.ConfigProto(allow_soft_placement=True)
     soft_config.gpu_options.allow_growth = True
     #soft_config.gpu_options.per_process_gpu_memory_fraction=0.33
     shape = [1, y_new, x_new, 3]
@@ -242,17 +242,17 @@ if __name__ == '__main__':
 
     # open graph
     with g.as_default():
-        X = tf.placeholder(tf.float32, shape=shape, name='img_placeholder')
+        X = tf.compat.v1.placeholder(tf.float32, shape=shape, name='img_placeholder')
         Y = transform.net(X)
 
         # restore the model to the session.
-        saver = tf.train.Saver()
+        saver = tf.compat.v1.train.Saver()
 
         if args.fullscreen:
             cv2.namedWindow("result", cv2.WND_PROP_FULLSCREEN)
             cv2.setWindowProperty("result", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
         next = 0
-        sess = tf.Session(config=soft_config)
+        sess = tf.compat.v1.Session(config=soft_config)
 
         stylize_and_output(cap, sess, saver, next)
